@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Mail2PDF — התקדמות</title>
+<style>
+ :root { color-scheme: light dark; }
+ body { font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        margin: 0; padding: 24px 18px; background: #f4f6f9; color: #1b2733; }
+ .card { max-width: 460px; margin: 0 auto; background: #fff; border-radius: 14px;
+         padding: 22px; box-shadow: 0 2px 14px rgba(20,30,50,.10); }
+ h1 { margin: 0 0 2px; font-size: 19px; color: #2f5597; }
+ .state { font-size: 15px; color: #44515f; margin-bottom: 16px; }
+ .pct { font-size: 46px; font-weight: 700; line-height: 1; margin: 6px 0 10px; }
+ .bar { height: 14px; border-radius: 8px; background: #e4e9f0; overflow: hidden; }
+ .fill { height: 100%; width: 0; background: #2f5597; transition: width .5s ease; }
+ .counts { margin: 12px 0 18px; font-size: 16px; }
+ table { width: 100%; border-collapse: collapse; font-size: 15px; }
+ td { padding: 7px 0; border-bottom: 1px solid #eef1f5; }
+ td:last-child { text-align: left; font-variant-numeric: tabular-nums; font-weight: 600; }
+ tr:last-child td { border-bottom: none; }
+ .foot { margin-top: 16px; font-size: 12px; color: #8a929c; }
+ .stale { color: #8a4b00; }
+ @media (prefers-color-scheme: dark) {
+   body { background: #12171d; color: #e6ebf1; }
+   .card { background: #1b222b; box-shadow: none; }
+   .bar { background: #2a323d; } td { border-bottom-color: #262e38; }
+   .state { color: #9fb0c2; } h1 { color: #7aa2e3; }
+ }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Mail2PDF</h1>
+  <div class="state" id="state">טוען…</div>
+  <div class="pct" id="pct">—</div>
+  <div class="bar"><div class="fill" id="fill"></div></div>
+  <div class="counts" id="counts"></div>
+  <table id="rows"></table>
+  <div class="foot" id="foot"></div>
+</div>
+<script>
+// The page is static; every number comes from status.json, which the program
+// pushes. A cache-buster on the query is needed because both GitHub Pages and
+// the phone will happily serve a minute-old copy otherwise.
+const clock = s => {
+  s = Math.max(0, Math.round(s));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
+  const pad = n => String(n).padStart(2, "0");
+  return h ? `${h}:${pad(m)}:${pad(x)}` : `${m}:${pad(x)}`;
+};
+
+async function tick() {
+  let d;
+  try {
+    const r = await fetch("status.json?t=" + Date.now(), { cache: "no-store" });
+    d = await r.json();
+  } catch (e) {
+    document.getElementById("state").textContent = "אין חיבור לנתונים";
+    return;
+  }
+  const pct = d.total ? (d.done / d.total * 100) : 0;
+  document.getElementById("pct").textContent = pct.toFixed(1) + "%";
+  document.getElementById("fill").style.width = pct.toFixed(1) + "%";
+  document.getElementById("counts").textContent =
+    d.done.toLocaleString("he-IL") + " מתוך " + d.total.toLocaleString("he-IL");
+
+  let state = "ממיר…", colour = "#2f5597";
+  if (d.finished) { state = "הסתיים"; colour = "#1d6b2f"; }
+  else if (d.stopped) { state = "נעצר"; colour = "#8a4b00"; }
+  else if (d.paused) { state = "מושהה"; colour = "#8a4b00"; }
+  document.getElementById("state").textContent = state;
+  document.getElementById("fill").style.background = colour;
+
+  const rows = [];
+  const add = (k, v) => rows.push(`<tr><td>${k}</td><td>${v}</td></tr>`);
+  if (d.batch_count) add("מנה", `${d.batch_index} / ${d.batch_count}`);
+  if (d.elapsed_seconds != null) add("זמן שעבר", clock(d.elapsed_seconds));
+  if (d.remaining_seconds != null && !d.finished && !d.stopped) {
+    add("נותר בערך", clock(d.remaining_seconds));
+    const end = new Date(Date.now() + d.remaining_seconds * 1000);
+    add("צפוי להסתיים", end.toTimeString().slice(0, 5));
+  }
+  if (d.skipped) add("דולגו", d.skipped.toLocaleString("he-IL"));
+  if (d.failed) add("נכשלו", d.failed.toLocaleString("he-IL"));
+  document.getElementById("rows").innerHTML = rows.join("");
+
+  // A page that looks live while showing an hour-old number is worse than one
+  // that admits it does not know.
+  const age = d.updated_epoch ? (Date.now() / 1000 - d.updated_epoch) : null;
+  const foot = document.getElementById("foot");
+  if (age != null && age > 300 && !d.finished) {
+    foot.className = "foot stale";
+    foot.textContent = "עודכן לפני " + clock(age) + " — ייתכן שההמרה נעצרה";
+  } else {
+    foot.className = "foot";
+    foot.textContent = (d.updated || "") + " · הדף מתרענן לבד";
+  }
+}
+
+tick();
+setInterval(tick, 15000);
+</script>
+</body>
+</html>
