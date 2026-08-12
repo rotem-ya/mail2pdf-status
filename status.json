@@ -1,15 +1,15 @@
 {
- "done": 1272,
+ "done": 1546,
  "total": 3372,
  "finished": false,
  "stopped": false,
  "paused": false,
  "skipped": 0,
  "failed": 0,
- "elapsed_seconds": 270,
- "remaining_seconds": 446,
+ "elapsed_seconds": 330,
+ "remaining_seconds": 390,
  "batch_index": 0,
  "batch_count": 0,
- "updated": "12/08/2026 14:58:03",
- "updated_epoch": 1786535883
+ "updated": "12/08/2026 14:59:03",
+ "updated_epoch": 1786535943
 }
